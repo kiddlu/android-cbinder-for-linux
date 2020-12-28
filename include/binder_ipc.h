@@ -35,7 +35,7 @@ struct binder_service{
     int (*death_notify)(void *);
 };
 
-struct _binder_thread_data{
+struct binder_thread_data{
     int isMain;
     char t_name[32];
 };
