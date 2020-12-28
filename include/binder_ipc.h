@@ -18,32 +18,27 @@ typedef enum gbinder_status {
 } BINDER_STATUS;
 
 
-typedef struct _ipc_thread_info{
-    tBinderState *bs;
-    tBinderBuf in_buf;
-    tBinderBuf out_buf;
+struct binder_ipc_tinfo{
+    struct binder_state *bs;
+    struct binder_buf in_buf;
+    struct binder_buf out_buf;
     int        reply_status_code;
     int        txn_status;
-}tIpcThreadInfo;
+};
 
 
 /**********binder service structions***********/
-typedef int (*on_transact)(uint32_t, tBinderIo *, tBinderIo *, uint32_t);
-typedef int (*link_to_death)(void *);
-typedef int (*unlink_to_death)(void *);
-typedef int (*death_notify)(void *);
+struct binder_service{
+    int (*on_transact)(uint32_t, struct binder_io *, struct binder_io *, uint32_t);
+    int (*link_to_death)(void *);
+    int (*unlink_to_death)(void *);
+    int (*death_notify)(void *);
+};
 
-typedef struct _binder_proxy{
-    on_transact transact_cb;
-    link_to_death link_to_death_cb;
-    unlink_to_death unlink_to_death_cb;
-    death_notify death_notify_cb;
-}tBinderService;
-
-typedef struct _binder_thread_data{
+struct _binder_thread_data{
     int isMain;
     char t_name[32];
-}tBinderThreadData;
+};
 
 
 /***************************************
@@ -55,34 +50,34 @@ typedef struct _binder_thread_data{
 * call the target functions according to the code in sync mode
 * For BC_TRANSACTION cmd type
 */
-int binder_cmd_sync_call(tIpcThreadInfo *ti,tBinderIo *bio, tBinderIo *msg,uint32_t target, uint32_t code);
+int binder_cmd_sync_call(struct binder_ipc_tinfo *ti,struct binder_io *bio, struct binder_io *msg,uint32_t target, uint32_t code);
 
 /*
 * call the target functions according to the code in async mode
 * For BC_TRANSACTION cmd type
 */
 
-int binder_cmd_async_call(tIpcThreadInfo *ti,tBinderIo *bio, tBinderIo *msg,uint32_t target, uint32_t code);
+int binder_cmd_async_call(struct binder_ipc_tinfo *ti,struct binder_io *bio, struct binder_io *msg,uint32_t target, uint32_t code);
 
 
 /*
 * For BC_ACQUIRE, just write buffer into thread out buffer
 */
-int binder_cmd_acquire(tIpcThreadInfo *ti, uint32_t target);
+int binder_cmd_acquire(struct binder_ipc_tinfo *ti, uint32_t target);
 
 
 /*
 * For BC_ACQUIRE, just write buffer into thread out buffer
 */
 
-int binder_cmd_release(tIpcThreadInfo *ti, uint32_t target);
+int binder_cmd_release(struct binder_ipc_tinfo *ti, uint32_t target);
 
 
 /*
 * For BC_REQUEST_DEATH_NOTIFICATION, just write buffer into thread out buffer
 */
 
-int binder_cmd_link_to_death(tIpcThreadInfo *ti, uint32_t target, void * death);
+int binder_cmd_link_to_death(struct binder_ipc_tinfo *ti, uint32_t target, void * death);
 
 
 /*
@@ -91,28 +86,28 @@ int binder_cmd_link_to_death(tIpcThreadInfo *ti, uint32_t target, void * death);
 * All the transaction buffer should be free after handle done!!!
 * just write buffer into thread out buffer
 */
-int binder_cmd_freebuf(tIpcThreadInfo *ti, void * ptr);
+int binder_cmd_freebuf(struct binder_ipc_tinfo *ti, void * ptr);
 
 
-tIpcThreadInfo * binder_get_thread_info();
+struct binder_ipc_tinfo * binder_get_thread_info();
 
 /*
 * for transaction data, we need to notice that:
 * txn data point to "another buffer", so after writed into outbuf, 
 we need to talk with driver immediately if the "another buffer" in stack area. 
 */
-int ti_write_outbuf(tIpcThreadInfo *ti, void * buf, size_t sz);
+int ti_write_outbuf(struct binder_ipc_tinfo *ti, void * buf, size_t sz);
 
 
 /*
 * send the buffer in thread info (in_buf and out_buf) to driver
 */
-int talk_with_driver(tIpcThreadInfo *ti,int read_flag);
+int talk_with_driver(struct binder_ipc_tinfo *ti,int read_flag);
 
 /*
 * send the cmds to driver
 */
-void flush_commands(tIpcThreadInfo *ti);
+void flush_commands(struct binder_ipc_tinfo *ti);
 
 
 /*binder services functions*/
@@ -120,7 +115,7 @@ int binder_thread_enter_loop(int isMain, int pending);
 
 void binder_threads_shutdown();
 
-int binder_add_service(const char * name, tBinderService * b_srv);
+int binder_add_service(const char * name, struct binder_service * b_srv);
 
 
 /*binder client functions*/

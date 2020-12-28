@@ -4,7 +4,7 @@
 
 /***********************binder io write functions***********************/
 
-static void * binder_io_alloc(tBinderIo * bio, size_t size){
+static void * binder_io_alloc(struct binder_io * bio, size_t size){
     void * ptr = NULL;
 
     if(x_likely(bio)){
@@ -18,7 +18,7 @@ static void * binder_io_alloc(tBinderIo * bio, size_t size){
     return ptr;
 }
 
-static struct flat_binder_object * binder_io_alloc_obj(tBinderIo * bio){
+static struct flat_binder_object * binder_io_alloc_obj(struct binder_io * bio){
     struct flat_binder_object * ptr = NULL;
     if(x_likely(bio)){
         if(bio->offs_avail <= 0) return ptr;
@@ -36,7 +36,7 @@ static struct flat_binder_object * binder_io_alloc_obj(tBinderIo * bio){
 }
 
 
-void binder_buf_init(tBinderBuf *buf, char * val, size_t val_size, int reset){
+void binder_buf_init(struct binder_buf *buf, char * val, size_t val_size, int reset){
     if(x_likely(buf) && x_likely(val)){
         buf->ptr = val;
         buf->consumed = 0;
@@ -46,7 +46,7 @@ void binder_buf_init(tBinderBuf *buf, char * val, size_t val_size, int reset){
 }
 
 
-uint32_t binder_buf_get_next_cmd(tBinderBuf * buf){
+uint32_t binder_buf_get_next_cmd(struct binder_buf * buf){
     uint32_t cmd = 0 ;
     size_t remaining = buf->size - buf->consumed;
     
@@ -66,7 +66,7 @@ uint32_t binder_buf_get_next_cmd(tBinderBuf * buf){
     return cmd;
 }
 
-void binder_buf_move_buffer(tBinderBuf *b_src_buf, tBinderBuf * consumed_buf){
+void binder_buf_move_buffer(struct binder_buf *b_src_buf, struct binder_buf * consumed_buf){
     size_t unprocess_size = 0;
     unprocess_size = consumed_buf->size - consumed_buf->consumed;
     memmove(b_src_buf->ptr, b_src_buf->ptr + consumed_buf->consumed, unprocess_size);
@@ -74,12 +74,12 @@ void binder_buf_move_buffer(tBinderBuf *b_src_buf, tBinderBuf * consumed_buf){
 }
 
 
-int binder_io_init(tBinderIo * bio, void * data, size_t data_size, size_t offset_list_size){
+int binder_io_init(struct binder_io * bio, void * data, size_t data_size, size_t offset_list_size){
     int ret = -1;
     size_t offsets_byte_len = 0;
 
     if(x_likely(bio) && x_likely(data)){
-        memset(bio, 0, sizeof(tBinderIo));
+        memset(bio, 0, sizeof(struct binder_io));
         memset(data, 0, sizeof(data_size));
         offsets_byte_len = offset_list_size * sizeof(binder_size_t);
 
@@ -99,7 +99,7 @@ int binder_io_init(tBinderIo * bio, void * data, size_t data_size, size_t offset
     return ret;
 }
 
-int binder_io_append_uint32(tBinderIo * bio, uint32_t val){
+int binder_io_append_uint32(struct binder_io * bio, uint32_t val){
     uint32_t * ptr;
     int ret = -1;
     if(x_likely(bio)){
@@ -112,7 +112,7 @@ int binder_io_append_uint32(tBinderIo * bio, uint32_t val){
     return ret;
 }
 
-int binder_io_append_string(tBinderIo * bio, const char * str){
+int binder_io_append_string(struct binder_io * bio, const char * str){
     int ret = -1;
     uint32_t * ptr;
     uint32_t len = 0;
@@ -135,7 +135,7 @@ int binder_io_append_string(tBinderIo * bio, const char * str){
     return ret;
 }
 
-int binder_io_append_fd(tBinderIo * bio, int fd){
+int binder_io_append_fd(struct binder_io * bio, int fd){
     int ret = -1;
     struct binder_fd_object *fd_obj = NULL;
 
@@ -178,7 +178,7 @@ int binder_io_append_fd(tBinderIo * bio, int fd){
 * if the obj is a inner-process object, use this function
 * is the obj is a reference object of other process, use binder_io_append_ref
 */
-int binder_io_append_obj(tBinderIo * bio, void * ptr){
+int binder_io_append_obj(struct binder_io * bio, void * ptr){
     int ret = -1;
     struct flat_binder_object *flat_obj = NULL;
     
@@ -201,7 +201,7 @@ int binder_io_append_obj(tBinderIo * bio, void * ptr){
 * if the obj is a inner-process object, use binder_io_append_obj
 * is the obj is a reference object of other process, use this function
 */
-int binder_io_append_ref(tBinderIo * bio,  uint32_t hdl){
+int binder_io_append_ref(struct binder_io * bio,  uint32_t hdl){
     int ret = -1;
     struct flat_binder_object *flat_obj = NULL;
     
@@ -221,7 +221,7 @@ int binder_io_append_ref(tBinderIo * bio,  uint32_t hdl){
 
 /***********************binder io read functions***********************/
 
-static void * binder_io_get(tBinderIo * bio, size_t size){
+static void * binder_io_get(struct binder_io * bio, size_t size){
     void * ptr = NULL;
 
     if(x_likely(bio)){
@@ -239,7 +239,7 @@ static void * binder_io_get(tBinderIo * bio, size_t size){
 }
 
 
-static struct flat_binder_object * binder_io_obj_get(tBinderIo *bio, uint32_t offset_idx){
+static struct flat_binder_object * binder_io_obj_get(struct binder_io *bio, uint32_t offset_idx){
     struct flat_binder_object *flat_obj = NULL;
     size_t cur_off = bio->data - bio->data0;
     if(offset_idx < bio->offs_avail && cur_off == bio->offs[offset_idx]){
@@ -253,7 +253,7 @@ static struct flat_binder_object * binder_io_obj_get(tBinderIo *bio, uint32_t of
 * translate the transaction data into binder io format
 * use binder_io_get functions to get the parameters.
 */
-void binder_io_init_from_txn(tBinderIo *bio, struct binder_transaction_data *txn){
+void binder_io_init_from_txn(struct binder_io *bio, struct binder_transaction_data *txn){
     if(x_likely(bio) && x_likely(txn)){
         bio->data = bio->data0 = (char *)(intptr_t)txn->data.ptr.buffer;
         bio->offs = bio->offs0 = (binder_size_t *)(intptr_t)txn->data.ptr.offsets;
@@ -266,7 +266,7 @@ void binder_io_init_from_txn(tBinderIo *bio, struct binder_transaction_data *txn
 /*
 * translate the binder io data into transaction format
 */
-void binder_io_to_txn(tBinderIo *bio, struct binder_transaction_data *txn){
+void binder_io_to_txn(struct binder_io *bio, struct binder_transaction_data *txn){
     if(x_likely(bio) && x_likely(txn)){
         txn->data_size = bio->data - bio->data0;
         txn->offsets_size = ((char *)bio->offs) - ((char *)bio->offs0);
@@ -276,12 +276,12 @@ void binder_io_to_txn(tBinderIo *bio, struct binder_transaction_data *txn){
 }
 
 
-uint32_t binder_io_get_uint32(tBinderIo *bio){
+uint32_t binder_io_get_uint32(struct binder_io *bio){
     uint32_t *ptr = binder_io_get(bio, sizeof(uint32_t));
     return ptr ? *ptr : 0;
 }
 
-char* binder_io_get_string(tBinderIo *bio, size_t *sz){
+char* binder_io_get_string(struct binder_io *bio, size_t *sz){
     /*first get the len of string*/
     uint32_t s_len = binder_io_get_uint32(bio);
 
@@ -291,7 +291,7 @@ char* binder_io_get_string(tBinderIo *bio, size_t *sz){
     return (char*)binder_io_get(bio, s_len + 1);
 }
 
-uint32_t binder_io_get_fd(tBinderIo *bio, uint32_t offset_idx){
+uint32_t binder_io_get_fd(struct binder_io *bio, uint32_t offset_idx){
     uint32_t fd = 0;
 
     struct flat_binder_object *flat_obj = NULL;
@@ -302,7 +302,7 @@ uint32_t binder_io_get_fd(tBinderIo *bio, uint32_t offset_idx){
     return fd;
 }
 
-binder_uintptr_t binder_io_get_obj(tBinderIo *bio, uint32_t offset_idx){
+binder_uintptr_t binder_io_get_obj(struct binder_io *bio, uint32_t offset_idx){
     binder_uintptr_t binder = 0;
 
     struct flat_binder_object *flat_obj = NULL;
@@ -313,7 +313,7 @@ binder_uintptr_t binder_io_get_obj(tBinderIo *bio, uint32_t offset_idx){
     return binder;
 }
 
-uint32_t binder_io_get_ref(tBinderIo *bio, uint32_t offset_idx){
+uint32_t binder_io_get_ref(struct binder_io *bio, uint32_t offset_idx){
     uint32_t handle = 0;
 
     struct flat_binder_object *flat_obj = NULL;

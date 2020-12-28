@@ -2,10 +2,10 @@
 #include "binder_ipc.h"
 #include "binder_io.h"
 
-#define FD_SERVICE_NAME "fv.fd.service"
+#define FD_SERVICE_NAME "fd.service"
 
 
-int fd_on_transact(uint32_t code, tBinderIo * msg, tBinderIo * reply, uint32_t flag){
+int fd_on_transact(uint32_t code, struct binder_io * msg, struct binder_io * reply, uint32_t flag){
     char * name = NULL;
     char buf[8] = {0};
     int fd = 0, i = 0, read_len;
@@ -30,11 +30,11 @@ int fd_on_transact(uint32_t code, tBinderIo * msg, tBinderIo * reply, uint32_t f
     return 0;
 }
 
-tBinderService fd_service = {
-    .transact_cb = fd_on_transact,
-    .link_to_death_cb = NULL,
-    .unlink_to_death_cb = NULL,
-    .death_notify_cb = NULL,
+struct binder_service fd_service = {
+    .on_transact = fd_on_transact,
+    .link_to_death = NULL,
+    .unlink_to_death = NULL,
+    .death_notify = NULL,
 };
 
 int main(int argc, char * argv[]){

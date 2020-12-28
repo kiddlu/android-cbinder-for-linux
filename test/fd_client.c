@@ -4,13 +4,14 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
+#define FD_SERVICE_NAME "fd.service"
 
 int main(int argc, char * argv[]){
     struct timeval tpstart,tpend;
     long int v_sec = 0;
-    tIpcThreadInfo *ti = NULL;
+    struct binder_ipc_tinfo *ti = NULL;
     char binder_buf[DEFAULT_BINDER_IOBUF_SIZE] = {0};
-    tBinderIo bio, msg;
+    struct binder_io bio, msg;
     char buf[16] = {0};
     int fd = 0, read_len, i;
 
@@ -18,7 +19,7 @@ int main(int argc, char * argv[]){
         printf("Usage : fd_client <filepath>\n");
         return -1;
     }
-    uint32_t fd_handle = binder_get_service("fv.fd.service");
+    uint32_t fd_handle = binder_get_service(FD_SERVICE_NAME);
 
     if(fd_handle == 0){
         printf("get fd handle fail...exit!\n");

@@ -6,7 +6,7 @@
 
 /*************************static variables******************************/
 static atomic_uint g_bs_refcount = ATOMIC_VAR_INIT(0);
-static tBinderState g_bs;
+static struct binder_state g_bs;
 static pthread_mutex_t g_binder_mutex = PTHREAD_MUTEX_INITIALIZER;
 /***********************************************************************/
 
@@ -14,16 +14,16 @@ static pthread_mutex_t g_binder_mutex = PTHREAD_MUTEX_INITIALIZER;
 * default size is (1M-2*page_size) in Android But I think it is too large for embeded linux device.
 * One process should open binder device only once. so we will use a atomic parameter to control it.
 */
-tBinderState * binder_open(const char * path, size_t size){
+struct binder_state * binder_open(const char * path, size_t size){
     uint32_t bs_ref = 0;
     struct binder_version vers;
-    tBinderState * bs = &g_bs;
+    struct binder_state * bs = &g_bs;
 
     pthread_mutex_lock(&g_binder_mutex);
 
     bs_ref = atomic_load(&g_bs_refcount);
     if(bs_ref == 0){
-        memset(bs, 0, sizeof(tBinderState));
+        memset(bs, 0, sizeof(struct binder_state));
 
         bs->fd = open(path, O_RDWR | O_CLOEXEC);
         if(bs->fd <= 0) goto open_fail;
@@ -63,7 +63,7 @@ open_fail:
 /*
 * close the binder device and ummap the data
 */
-void binder_close(tBinderState * bs){
+void binder_close(struct binder_state * bs){
     uint32_t bs_ref = 0;
     
     if(!bs) return;
@@ -89,7 +89,7 @@ void binder_close(tBinderState * bs){
 * claim to be a context manager service.
 */
 
-int binder_request_context_manager(tBinderState * bs){
+int binder_request_context_manager(struct binder_state * bs){
     if(bs && bs->fd > 0){
         return ioctl(bs->fd, BINDER_SET_CONTEXT_MGR, 0);
     }
@@ -99,7 +99,7 @@ int binder_request_context_manager(tBinderState * bs){
 /*
 * set max threads for binder
 */
-int binder_set_max_threads(tBinderState * bs, size_t t_num){
+int binder_set_max_threads(struct binder_state * bs, size_t t_num){
     unsigned int num = t_num;
     if(bs && bs->fd > 0){
         return ioctl(bs->fd, BINDER_SET_MAX_THREADS, &num);
@@ -113,7 +113,7 @@ int binder_set_max_threads(tBinderState * bs, size_t t_num){
 * if write only , set read to NULL
 * if read only , set write to NULL
 */
-int binder_write_read(tBinderState * bs, tBinderBuf * w, tBinderBuf * r){
+int binder_write_read(struct binder_state * bs, struct binder_buf * w, struct binder_buf * r){
     struct binder_write_read bwr;
     int res = -1;
 

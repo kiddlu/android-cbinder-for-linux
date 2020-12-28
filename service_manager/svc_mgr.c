@@ -4,7 +4,7 @@
 #include "binder_common.h"
 
 struct binder_death {
-    void (*death_cb)(tIpcThreadInfo *, void *);
+    void (*death_cb)(struct binder_ipc_tinfo *, void *);
     void *ptr;
 };
 
@@ -19,7 +19,7 @@ struct svcinfo
 
 struct svcinfo *svclist = NULL;
 
-void svc_death(tIpcThreadInfo *ti, void *ptr)
+void svc_death(struct binder_ipc_tinfo *ti, void *ptr)
 {
     struct svcinfo *si = (struct svcinfo* ) ptr;
 
@@ -73,10 +73,10 @@ struct svcinfo * create_svc(const char *name, uint32_t hdl){
 }
 
 
-int svcmgr_handler(tIpcThreadInfo *ti,
+int svcmgr_handler(struct binder_ipc_tinfo *ti,
                    struct binder_transaction_data *txn,
-                   tBinderIo * reply){
-    tBinderIo msg;
+                   struct binder_io * reply){
+    struct binder_io msg;
     char *name, *svc;
     uint32_t handle, strict_policy;
     struct svcinfo * si = NULL;
@@ -136,7 +136,7 @@ int svcmgr_handler(tIpcThreadInfo *ti,
     return 0;
 }
 
-void svcmgr_send_reply(tIpcThreadInfo *ti, tBinderIo * reply, int res){
+void svcmgr_send_reply(struct binder_ipc_tinfo *ti, struct binder_io * reply, int res){
     struct binder_transaction_data tr;
     uint32_t cmd = BC_REPLY;
     memset(&tr, 0, sizeof(tr));
@@ -157,10 +157,10 @@ void svcmgr_send_reply(tIpcThreadInfo *ti, tBinderIo * reply, int res){
 }
 
 int main(int argc, char * argv[]){
-    tIpcThreadInfo * ti = binder_get_thread_info();
-    tBinderThreadData t_data;
-    tBinderBuf rbuf;
-    tBinderIo reply;
+    struct binder_ipc_tinfo * ti = binder_get_thread_info();
+    struct binder_thread_data t_data;
+    struct binder_buf rbuf;
+    struct binder_io reply;
     uint32_t cmd = 0;
     int ret = 0, result = 0;
     char reply_data[128] = {0};

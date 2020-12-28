@@ -4,14 +4,14 @@
 
 #define BINDER_READ_BUF_SIZE 256
 
-static int binder_execute_cmds(tIpcThreadInfo * ti, uint32_t cmd, void * data);
+static int binder_execute_cmds(struct binder_ipc_tinfo * ti, uint32_t cmd, void * data);
 
 /*
 * for transaction data, we need to notice that:
 * txn data point to "another buffer", so after writed into outbuf, 
 we need to talk with driver immediately if the "another buffer" in stack area. 
 */
-int ti_write_outbuf(tIpcThreadInfo *ti, void * buf, size_t sz){
+int ti_write_outbuf(struct binder_ipc_tinfo *ti, void * buf, size_t sz){
     if(x_unlikely(!ti) || x_unlikely(!buf)) return -1;
     if(ti->out_buf.size - ti->out_buf.consumed < sz) return -1;
 
@@ -21,9 +21,9 @@ int ti_write_outbuf(tIpcThreadInfo *ti, void * buf, size_t sz){
 }
 
 
-int talk_with_driver(tIpcThreadInfo *ti,int read_flag){
-    tBinderBuf *r_buf = NULL, * w_buf = NULL;
-    tBinderBuf tmp_w_buf;
+int talk_with_driver(struct binder_ipc_tinfo *ti,int read_flag){
+    struct binder_buf *r_buf = NULL, * w_buf = NULL;
+    struct binder_buf tmp_w_buf;
     int need_read = 0, unprocess_size = 0, ret = -1;
     if(x_unlikely(!ti)) return ret;
     if(x_unlikely(!ti->bs)) return ret;
@@ -53,7 +53,7 @@ int talk_with_driver(tIpcThreadInfo *ti,int read_flag){
     return ret;
 }
 
-void flush_commands(tIpcThreadInfo *ti){
+void flush_commands(struct binder_ipc_tinfo *ti){
     if(talk_with_driver(ti, 0) >= 0){
         if(ti->out_buf.consumed > 0){
             /*still have out buffer not flushed, try again*/
@@ -71,11 +71,11 @@ void flush_commands(tIpcThreadInfo *ti){
 * negative number means service err code
 * positive number means the binder system err code
 */
-static int _binder_cmd_wait_rsp(tIpcThreadInfo *ti, tBinderIo * reply){
+static int _binder_cmd_wait_rsp(struct binder_ipc_tinfo *ti, struct binder_io * reply){
     int err = BINDER_STATUS_OK;
     uint32_t cmd = 0;
-    tBinderBuf bbuf;
-    tBinderIo tmp_reply;
+    struct binder_buf bbuf;
+    struct binder_io tmp_reply;
     while(1){ 
         if(0 > talk_with_driver(ti, 1)){
             err = BINDER_STATUS_IO_ERROR;
@@ -142,7 +142,7 @@ finish:
 * call the target functions according to the code
 * For BC_TRANSACTION cmd type
 */
-static int _binder_cmd_call(tIpcThreadInfo *ti,tBinderIo *bio, tBinderIo *reply,uint32_t target, uint32_t code, int flag){
+static int _binder_cmd_call(struct binder_ipc_tinfo *ti,struct binder_io *bio, struct binder_io *reply,uint32_t target, uint32_t code, int flag){
     int ret = 0;
     uint32_t cmd = BC_TRANSACTION;
     struct binder_transaction_data txn;
@@ -171,11 +171,11 @@ static int _binder_cmd_call(tIpcThreadInfo *ti,tBinderIo *bio, tBinderIo *reply,
     return ret;
 }
 
-int binder_cmd_sync_call(tIpcThreadInfo *ti,tBinderIo *bio, tBinderIo *msg,uint32_t target, uint32_t code){
+int binder_cmd_sync_call(struct binder_ipc_tinfo *ti,struct binder_io *bio, struct binder_io *msg,uint32_t target, uint32_t code){
     return _binder_cmd_call(ti, bio, msg,target,code, 0);
 }
 
-int binder_cmd_async_call(tIpcThreadInfo *ti,tBinderIo *bio, tBinderIo *msg,uint32_t target, uint32_t code){
+int binder_cmd_async_call(struct binder_ipc_tinfo *ti,struct binder_io *bio, struct binder_io *msg,uint32_t target, uint32_t code){
     return _binder_cmd_call(ti, bio, msg,target,code, 1);
 }
 
@@ -184,9 +184,9 @@ int binder_cmd_async_call(tIpcThreadInfo *ti,tBinderIo *bio, tBinderIo *msg,uint
 * just send data into thread out buffer, if user want to send to driver,
 * call flush_commands to talk with driver.
 */
-int binder_cmd_acquire(tIpcThreadInfo *ti, uint32_t target){
+int binder_cmd_acquire(struct binder_ipc_tinfo *ti, uint32_t target){
     int32_t tmp_cmd[2] = {0};
-    //tBinderBuf bbuf;
+    //struct binder_buf bbuf;
     
     //binder_buf_init(&bbuf,(const char *)tmp_cmd, sizeof(tmp_cmd),1);
     
@@ -204,9 +204,9 @@ int binder_cmd_acquire(tIpcThreadInfo *ti, uint32_t target){
 * call flush_commands to talk with driver.
 */
 
-int binder_cmd_release(tIpcThreadInfo *ti, uint32_t target){
+int binder_cmd_release(struct binder_ipc_tinfo *ti, uint32_t target){
     int32_t tmp_cmd[2] = {0};
-    //tBinderBuf bbuf;
+    //struct binder_buf bbuf;
 
     //binder_buf_init(&bbuf,(const char *)tmp_cmd, sizeof(tmp_cmd),1);
     tmp_cmd[0] = BC_RELEASE;
@@ -220,7 +220,7 @@ int binder_cmd_release(tIpcThreadInfo *ti, uint32_t target){
 * For BC_REQUEST_DEATH_NOTIFICATION, just write buffer into thread out buffer
 */
 
-int binder_cmd_link_to_death(tIpcThreadInfo *ti, uint32_t target, void * death){
+int binder_cmd_link_to_death(struct binder_ipc_tinfo *ti, uint32_t target, void * death){
     struct {
         uint32_t cmd;
         struct binder_handle_cookie payload;
@@ -242,8 +242,8 @@ int binder_cmd_link_to_death(tIpcThreadInfo *ti, uint32_t target, void * death){
 * call flush_commands to talk with driver.
 
 */
-int binder_cmd_freebuf(tIpcThreadInfo *ti, void * ptr){
-    //tBinderBuf bbuf;
+int binder_cmd_freebuf(struct binder_ipc_tinfo *ti, void * ptr){
+    //struct binder_buf bbuf;
     struct _binder_cmd_freebuf{
         int32_t cmd;
         binder_uintptr_t ptr;
@@ -263,12 +263,12 @@ static int gShutingdown = 0;
 static pthread_key_t gThreadKey = 0;
 static pthread_mutex_t gThreadKeyMutex = PTHREAD_MUTEX_INITIALIZER;
 
-static tIpcThreadInfo * init_thread_info(){
-    tIpcThreadInfo * ti = NULL;
+static struct binder_ipc_tinfo * init_thread_info(){
+    struct binder_ipc_tinfo * ti = NULL;
 
-    ti = (tIpcThreadInfo *) malloc(sizeof(tIpcThreadInfo));
+    ti = (struct binder_ipc_tinfo *) malloc(sizeof(struct binder_ipc_tinfo));
     if(ti){
-        memset(ti, 0 ,sizeof(tIpcThreadInfo));
+        memset(ti, 0 ,sizeof(struct binder_ipc_tinfo));
         ti->bs = binder_open(DEFAULT_BINDER_DEV,DEFAULT_BINDER_MAP_SIZE);
         if(!ti->bs) goto fail;
         ti->in_buf.ptr = (char * )malloc(MAX_THREAD_BUF_LEN);
@@ -298,7 +298,7 @@ fail:
 }
 
 static void destory_thread_info(void * ptr){
-    tIpcThreadInfo * ti = (tIpcThreadInfo *)ptr;
+    struct binder_ipc_tinfo * ti = (struct binder_ipc_tinfo *)ptr;
     if(ti){
         if(ti->in_buf.ptr) free(ti->in_buf.ptr);
         if(ti->out_buf.ptr) free(ti->out_buf.ptr);
@@ -314,12 +314,12 @@ static void destory_thread_info(void * ptr){
 }
 
 
-tIpcThreadInfo * binder_get_thread_info(){
+struct binder_ipc_tinfo * binder_get_thread_info(){
     const pthread_key_t key = gThreadKey;
-    tIpcThreadInfo * ti = NULL;
+    struct binder_ipc_tinfo * ti = NULL;
     if(gHaveThreadKey){
 retry:
-        ti = (tIpcThreadInfo *)pthread_getspecific(key);
+        ti = (struct binder_ipc_tinfo *)pthread_getspecific(key);
         if(ti) return ti;
         if((ti = init_thread_info()) != NULL){
             pthread_setspecific(gThreadKey, ti);
@@ -348,12 +348,12 @@ retry:
 * after all the threads exited
 */
 void binder_threads_shutdown(){
-    tIpcThreadInfo * ti = NULL;
+    struct binder_ipc_tinfo * ti = NULL;
     
     gShutingdown = 1;
 
     if(gHaveThreadKey){
-        ti = (tIpcThreadInfo *)pthread_getspecific(gThreadKey);
+        ti = (struct binder_ipc_tinfo *)pthread_getspecific(gThreadKey);
         destory_thread_info((void *)ti);
         pthread_setspecific(gThreadKey, NULL);
         pthread_key_delete(gThreadKey);
@@ -364,11 +364,11 @@ void binder_threads_shutdown(){
 
 /************************************binder serives related functions*****************************************/
 
-int binder_execute_cmds(tIpcThreadInfo * ti, uint32_t cmd, void * data){
+int binder_execute_cmds(struct binder_ipc_tinfo * ti, uint32_t cmd, void * data){
     int32_t result = BINDER_STATUS_OK;
     char binder_buf[DEFAULT_BINDER_IOBUF_SIZE] = {0};
-    tBinderIo bio,reply;
-    tBinderService *b_srv = NULL;
+    struct binder_io bio,reply;
+    struct binder_service *b_srv = NULL;
     struct binder_ptr_cookie* ptr = NULL;
     binder_uintptr_t __ptr,__cookie;
     int32_t r_cmd = 0;
@@ -424,10 +424,10 @@ int binder_execute_cmds(tIpcThreadInfo * ti, uint32_t cmd, void * data){
                 int32_t status_flag = 0;
                 struct binder_transaction_data * tr = (struct binder_transaction_data *)data;
                 if(tr->target.ptr){
-                    tBinderService *b_srv = (tBinderService *)tr->target.ptr;
+                    struct binder_service *b_srv = (struct binder_service *)tr->target.ptr;
                     binder_io_init_from_txn(&bio, tr);
                     binder_io_init(&reply, binder_buf, sizeof(binder_buf), DEFAULT_OFFSET_LIST_SIZE);
-                    if(b_srv && b_srv->transact_cb) status_flag = b_srv->transact_cb(tr->code,&bio,&reply,tr->flags);
+                    if(b_srv && b_srv->on_transact) status_flag = b_srv->on_transact(tr->code,&bio,&reply,tr->flags);
                 }
 
                 /*send reply for one way call*/
@@ -459,7 +459,7 @@ int binder_execute_cmds(tIpcThreadInfo * ti, uint32_t cmd, void * data){
             break;
         case BR_DEAD_BINDER:
             __ptr = *(binder_uintptr_t *)data;
-            b_srv = (tBinderService*) __ptr;
+            b_srv = (struct binder_service*) __ptr;
             r_cmd = BC_DEAD_BINDER_DONE;
             /*
                 do something to notify (dead) event
@@ -469,7 +469,7 @@ int binder_execute_cmds(tIpcThreadInfo * ti, uint32_t cmd, void * data){
             ti_write_outbuf(ti, &__ptr, sizeof(__ptr));
             break;
         case BR_CLEAR_DEATH_NOTIFICATION_DONE:
-            b_srv = (tBinderService*)(binder_uintptr_t)data;
+            b_srv = (struct binder_service*)(binder_uintptr_t)data;
             /*
                 decrease the reference of the binder proxy
             */
@@ -493,14 +493,14 @@ int binder_execute_cmds(tIpcThreadInfo * ti, uint32_t cmd, void * data){
 static atomic_uint g_thread_pool_seq = ATOMIC_VAR_INIT(0);
 
 void* binder_thread_loop_run(void * arg){
-    tBinderThreadData *t_data = (tBinderThreadData *)arg;
+    struct binder_thread_data *t_data = (struct binder_thread_data *)arg;
     uint32_t seq = 0;
     int32_t cmd = 0, result = 0;
     
-    tBinderBuf rbuf;
+    struct binder_buf rbuf;
     void * data = NULL;
     pid_t pid = getpid();
-    tIpcThreadInfo * ti = binder_get_thread_info();
+    struct binder_ipc_tinfo * ti = binder_get_thread_info();
 
     if(!ti){
         printf("#Error: failed to start binder thread...\n");
@@ -552,9 +552,9 @@ void* binder_thread_loop_run(void * arg){
 
 int binder_thread_enter_loop(int isMain, int pending){
     pthread_t tid;
-    tBinderThreadData *t_data = NULL;
+    struct binder_thread_data *t_data = NULL;
     /*start a thread to listen binder return msg*/
-    t_data = (tBinderThreadData *)malloc(sizeof(*t_data));
+    t_data = (struct binder_thread_data *)malloc(sizeof(*t_data));
 
     if(!t_data) return -1;
     memset(t_data, 0 ,sizeof(*t_data));
@@ -572,10 +572,10 @@ int binder_thread_enter_loop(int isMain, int pending){
 
 
 
-int binder_add_service(const char * name, tBinderService * b_srv){
-    tIpcThreadInfo *ti = binder_get_thread_info();
+int binder_add_service(const char * name, struct binder_service * b_srv){
+    struct binder_ipc_tinfo *ti = binder_get_thread_info();
     char binder_buf[DEFAULT_BINDER_IOBUF_SIZE] = {0};
-    tBinderIo bio, reply;
+    struct binder_io bio, reply;
     uint32_t cmd = BC_TRANSACTION;
     struct binder_transaction_data txn;
 
@@ -608,9 +608,9 @@ uint32_t binder_check_service(const char * service_name){
 }
 
 uint32_t binder_get_service(const char * service_name){
-    tIpcThreadInfo *ti = binder_get_thread_info();
+    struct binder_ipc_tinfo *ti = binder_get_thread_info();
     char binder_buf[DEFAULT_BINDER_IOBUF_SIZE] = {0};
-    tBinderIo bio, reply;
+    struct binder_io bio, reply;
     uint32_t cmd = BC_TRANSACTION, handle = 0;
     struct binder_transaction_data txn;
 
@@ -641,9 +641,9 @@ uint32_t binder_get_service(const char * service_name){
 }
 
 size_t binder_list_service(int idx, char* s_name, int len){
-    tIpcThreadInfo *ti = binder_get_thread_info();
+    struct binder_ipc_tinfo *ti = binder_get_thread_info();
     char binder_buf[DEFAULT_BINDER_IOBUF_SIZE] = {0};
-    tBinderIo bio, reply;
+    struct binder_io bio, reply;
     uint32_t cmd = BC_TRANSACTION;
     struct binder_transaction_data txn;
     size_t s_len = 0;
