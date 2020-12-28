@@ -1,29 +1,36 @@
-CC=gcc
-#CC=arm-linux-gnueabihf-gcc
+# Makefile for libcbinder
 
-CFLAGS:=-Wall -O3
-#CFLAGS += -DBINDER_IPC_32BIT
+SRCS+= src/binder_hal.c
+SRCS+= src/binder_io.c
+SRCS+= src/binder_ipc.c
 
-OBJS=src/binder_hal.o \
-     src/binder_io.o \
-     src/binder_ipc.o
-SVC_SRC=service_manager/binder_srv_manager.c
+CFLAGS+= -O3
+CFLAGS+= -Wall -Wno-unused-parameter
+CFLAGS+= -I$(shell pwd)/include
 
-LIB=libcbinder.so
-SVC_MANAGER=svc_manager
 
-INC_DIR=./include
+SVC_SRC := service_manager/svc_mgr.c
 
-all:$(LIB) $(SVC_MANAGER)
+LDFLAGS= -static 
 
-%.o : %.c
-	$(CC) $(CFLAGS) -fpic -c $< -o $@ -I$(INC_DIR) -lpthread
+LIBS= -lpthread
 
-$(SVC_MANAGER):
-	$(CC) -o $(SVC_MANAGER) $(SVC_SRC) $(CFLAGS) -I$(INC_DIR) -L./ -lcbinder -lpthread
+TOOLCHAIN=
+CC= $(TOOLCHAIN)gcc
 
-$(LIB) : $(OBJS)
-	$(CC) -shared -o $@ $(OBJS)
+OBJS= $(SRCS:%.c=%.o)
+
+all: libcbinder.a svc_mgr test
+
+libcbinder.a: $(OBJS)
+	$(AR) -cr $@ $^
+
+svc_mgr: libcbinder.a
+	$(CC) $(CFLAGS) $(SVC_SRC) $^ -o $@ $(LIBS) 
+
+test: libcbinder.a
+	$(CC) $(CFLAGS) test/fd_service.c $^ -o fd_service $(LIBS) 
+	$(CC) $(CFLAGS) test/fd_client.c  $^ -o fd_cleint  $(LIBS)
 
 clean:
-	rm $(OBJS) $(LIB) $(SVC_MANAGER)
+	rm -rf libcbinder.a svc_mgr fd_service fd_cleint $(OBJS)
