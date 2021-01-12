@@ -2,9 +2,12 @@
 #include "binder_ipc.h"
 #include "binder_io.h"
 #include <sys/time.h>
+#include <sys/shm.h>
 #include <fcntl.h>
 
-#define FD_SERVICE_NAME "fd.service"
+#include "xxdi.c"
+
+#define FD_SERVICE_NAME   "fd.service"
 
 unsigned int get_file_size(int fd)
 {
@@ -25,6 +28,7 @@ int main(int argc, char * argv[]){
     struct binder_io send, reply;
     char *buf;
     int fd = 0, len, i;
+	int shm_id;
 
     if(argc < 2){
         printf("Usage : fd_client <filepath>\n");
@@ -40,7 +44,8 @@ int main(int argc, char * argv[]){
     fd = open(argv[1], O_RDONLY);
     if(fd <= 0) return -1;
     len = get_file_size(fd);
-	buf = malloc(len);
+	shm_id = shmget(IPC_PRIVATE, len, IPC_CREAT);
+	buf = shmat(shm_id, NULL, 0);
     
     ti = binder_get_thread_info();
     binder_io_init(&send, binder_buf, sizeof(binder_buf), DEFAULT_OFFSET_LIST_SIZE);
@@ -48,6 +53,7 @@ int main(int argc, char * argv[]){
     binder_io_append_string(&send, "fd_config_file");
     binder_io_append_fd(&send, fd);
     binder_io_append_uint32(&send,len);
+    binder_io_append_uint32(&send,shm_id);
 
     gettimeofday(&tpstart,NULL);
     memset(&reply,0,sizeof(reply));
@@ -59,18 +65,15 @@ int main(int argc, char * argv[]){
     v_sec = 1000000 *(tpend.tv_sec - tpstart.tv_sec) + (tpend.tv_usec - tpstart.tv_usec);
     printf("binder sync call use time %ld(us)\n",v_sec);
 
-    lseek(fd,0L,SEEK_SET);  //important
-    len = read(fd, buf, len);
-    printf("client read fd buf:\n");
-    for(i = 0; i < len; i++)
-            printf("0x%02x\t",buf[i]);
-    printf("\n");
+	xxdi_encode(buf, len);
 
-    printf("client close fd:%d\n",close(fd));
-    
+	shmdt(buf);
+	shmctl(shm_id, IPC_RMID, 0);
+
     binder_cmd_release(ti,fd_handle);
     flush_commands(ti);
     binder_threads_shutdown();    
+
 
     return 0;
 }
