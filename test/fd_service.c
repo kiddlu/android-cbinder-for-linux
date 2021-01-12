@@ -5,24 +5,27 @@
 #define FD_SERVICE_NAME "fd.service"
 
 
-int fd_on_transact(uint32_t code, struct binder_io * msg, struct binder_io * reply, uint32_t flag){
+int fd_on_transact(uint32_t code, struct binder_io * recv, struct binder_io * reply, uint32_t flag){
     char * name = NULL;
-    char buf[8] = {0};
-    int fd = 0, i = 0, read_len;
-    if(!msg || !reply) return -1;
+    char *buf = 0;
+    int fd = 0, i = 0;
+    int len;
+    if(!recv || !reply) return -1;
 
-    name = binder_io_get_string(msg, NULL);
+    name = binder_io_get_string(recv, NULL);
 
     printf("fd_on_transact get name from client : %s code: %d\n",name, code);
 
-    fd = binder_io_get_fd(msg, 0);
+    fd = binder_io_get_fd(recv, 0);
 
     if(!fd) return -1;
+    len = binder_io_get_uint32(recv);
 
-    read_len = read(fd, buf, sizeof(buf));
+	buf = malloc(len);
+    len = read(fd, buf, len);
 
     printf("fd service read buf:\n");
-    for(i = 0; i < read_len; i++)
+    for(i = 0; i < len; i++)
         printf("0x%02x\t",buf[i]);
     printf("service close fd:%d\n",close(fd));
     binder_io_append_uint32(reply, 0);
