@@ -30,3 +30,4 @@ target_link_libraries(fd_client cbinder pthread)
 add_executable(fd_service  ${PROJECT_SOURCE_DIR}/test/fd_service.c)
 target_link_libraries(fd_service cbinder pthread)
 
+add_executable(binderfs  ${PROJECT_SOURCE_DIR}/binderfs/binderfs.c)
