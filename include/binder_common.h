@@ -21,7 +21,8 @@
 #define x_align4(x) ((x+3) & (~3))
 #define x_align8(x) ((x+7) & (~8))
 
-#define DEFAULT_BINDER_DEV "/dev/binder"
+//#define DEFAULT_BINDER_DEV "/dev/binder"
+#define DEFAULT_BINDER_DEV "/dev/binderfs/cbinder"
 #define DEFAULT_BINDER_MAP_SIZE (128*1024)
 
 #define DEFAULT_BINDER_IOBUF_SIZE 128

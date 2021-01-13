@@ -21,8 +21,8 @@ include_directories (${PROJECT_SOURCE_DIR}/include)
 
 add_library(cbinder STATIC ${CBINDER_SOURCES})
 
-add_executable(svc_mgr  ${PROJECT_SOURCE_DIR}/svc_mgr/svc_mgr.c)
-target_link_libraries(svc_mgr cbinder pthread)
+add_executable(binderd  ${PROJECT_SOURCE_DIR}/binderd/binderd.c)
+target_link_libraries(binderd cbinder pthread)
 
 add_executable(fd_client  ${PROJECT_SOURCE_DIR}/test/fd_client.c)
 target_link_libraries(fd_client cbinder pthread)
@@ -30,4 +30,4 @@ target_link_libraries(fd_client cbinder pthread)
 add_executable(fd_service  ${PROJECT_SOURCE_DIR}/test/fd_service.c)
 target_link_libraries(fd_service cbinder pthread)
 
-add_executable(binderfs  ${PROJECT_SOURCE_DIR}/binderfs/binderfs.c)
+#add_executable(binderfs  ${PROJECT_SOURCE_DIR}/svc_mgr/binderfs/binderfs.c)

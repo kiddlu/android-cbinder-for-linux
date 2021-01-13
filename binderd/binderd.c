@@ -3,6 +3,18 @@
 #include "binder_hal.h"
 #include "binder_common.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <sched.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 struct binder_death {
     void (*death_cb)(struct binder_ipc_tinfo *, void *);
     void *ptr;
@@ -156,7 +168,92 @@ void svcmgr_send_reply(struct binder_ipc_tinfo *ti, struct binder_io * reply, in
     //flush_commands(ti);
 }
 
+#define BINDERFS_MAX_NAME 255
+
+/**
+ * struct binderfs_device - retrieve information about a new binder device
+ * @name:   the name to use for the new binderfs binder device
+ * @major:  major number allocated for binderfs binder devices
+ * @minor:  minor number allocated for the new binderfs binder device
+ *
+ */
+struct binderfs_device {
+	char name[BINDERFS_MAX_NAME + 1];
+	__u32 major;
+	__u32 minor;
+};
+
+/**
+ * Allocate a new binder device.
+ */
+#define BINDER_CTL_ADD _IOWR('b', 1, struct binderfs_device)
+
+void init_binderfs(void)
+{
+    int fd, ret, saved_errno;
+    struct binderfs_device device = {0};
+
+	if (access(DEFAULT_BINDER_DEV, F_OK) == 0) {
+		//do not need init binderfs
+		return;
+	}
+
+	ret = mkdir("/dev/binderfs", 0755);
+	if (ret < 0 && errno != EEXIST) {
+		fprintf(stderr, "%s - Failed to create binderfs mountpoint\n",
+			strerror(errno));
+	}
+
+	ret = mount(NULL, "/dev/binderfs", "binder", 0, 0);
+	if (ret < 0) {
+		fprintf(stderr, "%s - Failed to mount binderfs\n",
+			strerror(errno));
+	}
+
+    memcpy(device.name, "cbinder", strlen("cbinder"));
+
+    fd = open("/dev/binderfs/binder-control", O_RDONLY | O_CLOEXEC);
+    if (fd < 0)
+    {
+        printf("%s - Failed to open binder-control device\n",
+               strerror(errno));
+    }
+
+    ret = ioctl(fd, BINDER_CTL_ADD, &device);
+    saved_errno = errno;
+    close(fd);
+    errno = saved_errno;
+    if (ret < 0)
+    {
+        //printf("%s\n",
+        //      explain_errno_ioctl(errno, fd, BINDER_CTL_ADD, &device));
+        printf("%s - Failed to allocate new binder device\n",
+               strerror(errno));
+    }
+
+    printf("Allocated new binder device with major %d, minor %d, and "
+           "name %s\n",
+           device.major, device.minor,
+           device.name);
+
+    char device_name[128] = "/dev/binderfs/cbinder";
+
+    struct stat sb;
+    mode_t mode;
+    if (stat(device_name, &sb) == -1) {
+        printf("stat %s failed\n", device_name);
+    }
+    // o+rw
+    mode = sb.st_mode | S_IWOTH | S_IROTH;
+    if (chmod(device_name, mode) == -1) {
+        printf("chmod o+rw %s failed\n", device_name);
+    }
+}
+
 int main(int argc, char * argv[]){
+
+	init_binderfs();
+
     struct binder_ipc_tinfo * ti = binder_get_thread_info();
     struct binder_thread_data t_data;
     struct binder_buf rbuf;
@@ -165,7 +262,7 @@ int main(int argc, char * argv[]){
     int ret = 0, result = 0;
     char reply_data[128] = {0};
     struct binder_transaction_data *tr = NULL;
-    
+
     memset(&t_data, 0 ,sizeof(t_data));
     t_data.isMain = 1;
     snprintf(t_data.t_name, sizeof(t_data.t_name),DEFAULT_SRV_MANAGER_NAME);
