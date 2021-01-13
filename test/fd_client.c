@@ -44,7 +44,7 @@ int main(int argc, char * argv[]){
     fd = open(argv[1], O_RDONLY);
     if(fd <= 0) return -1;
     len = get_file_size(fd);
-	shm_id = shmget(IPC_PRIVATE, len, IPC_CREAT);
+	shm_id = shmget(IPC_PRIVATE, len, IPC_CREAT | 666);
 	buf = shmat(shm_id, NULL, 0);
     
     ti = binder_get_thread_info();

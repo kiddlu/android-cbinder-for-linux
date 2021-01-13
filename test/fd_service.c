@@ -35,7 +35,6 @@ int fd_on_transact(uint32_t code, struct binder_io * recv, struct binder_io * re
     printf("service close fd:%d\n",close(fd));
 */
 	shmdt(buf);
-	shmctl(shm_id, IPC_RMID, 0);
 
     binder_io_append_uint32(reply, 0);
 

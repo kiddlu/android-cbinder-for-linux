@@ -1,36 +1,34 @@
-# Makefile for libcbinder
+CPUS=$(shell cat /proc/cpuinfo | grep "processor" | wc -l)
+PWD=$(shell pwd)
+BUILD_DIR=$(PWD)/build
+MAKE_OPT=
 
-SRCS+= src/binder_hal.c
-SRCS+= src/binder_io.c
-SRCS+= src/binder_ipc.c
+define shcmd-makepre
+	mkdir -p $(BUILD_DIR)
+	cd $(BUILD_DIR) && cmake ..
+endef
 
-CFLAGS+= -O3
-CFLAGS+= -Wall -Wno-unused-parameter
-CFLAGS+= -I$(shell pwd)/include
+define shcmd-make
+	@cd $(BUILD_DIR) && make -j$(CPUS) $(MAKE_OPT) | grep -v "^make\[[0-9]\]:"
+endef
 
+define shcmd-makeclean
+	@cd $(BUILD_DIR) && make clean
+endef
 
-SVC_SRC := service_manager/svc_mgr.c
+define shcmd-makerm
+	rm -rf $(BUILD_DIR) 
+endef
 
-LDFLAGS= -static 
-
-LIBS= -lpthread
-
-TOOLCHAIN=
-CC= $(TOOLCHAIN)gcc
-
-OBJS= $(SRCS:%.c=%.o)
-
-all: libcbinder.a svc_mgr test
-
-libcbinder.a: $(OBJS)
-	$(AR) -cr $@ $^
-
-svc_mgr: libcbinder.a
-	$(CC) $(CFLAGS) $(SVC_SRC) $^ -o $@ $(LIBS) 
-
-test: libcbinder.a
-	$(CC) $(CFLAGS) test/fd_service.c $^ -o fd_service $(LIBS) 
-	$(CC) $(CFLAGS) test/fd_client.c  $^ -o fd_cleint  $(LIBS)
+.PHONY: all clean rm pre
+all: pre 
+	$(call shcmd-make)
 
 clean:
-	rm -rf libcbinder.a svc_mgr fd_service fd_cleint $(OBJS)
+	$(call shcmd-makeclean)
+
+rm:
+	$(call shcmd-makerm)
+
+pre:
+	$(call shcmd-makepre)
